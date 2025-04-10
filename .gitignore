@@ -1,0 +1,66 @@
+# 编译中间文件
+*.o
+*.obj
+*.lo
+*.la
+*.al
+*.libs
+*.dll
+*.so
+*.so.*
+*.a
+*.lib
+*.dylib
+
+# Qt 编译文件
+moc_*
+ui_*
+qrc_*
+
+# Qt Creator 特定文件
+*.autosave
+*.user
+*.user.*
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+
+# CMake 构建目录
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+build/
+build-*/
+*.cbp
+
+# qmake 生成文件
+Makefile*
+*.prl
+*.qmlproject.user
+
+# 项目临时文件
+*.swp
+*.bak
+*.tmp
+*.log
+
+# Qt资源生成文件
+*.rcc
+
+# 编译输出（比如可执行文件）
+*.exe
+*.out
+*.app
+*.dSYM/
+
+# 其他常见 IDE 临时文件
+.idea/
+.vscode/
+*.DS_Store
+*.directory
+
+# 忽略 Qt 安装生成的 debug/release 文件夹（如果你手动构建）
+debug/
+release/
