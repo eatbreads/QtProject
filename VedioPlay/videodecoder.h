@@ -25,7 +25,7 @@ public:
     bool open(const QString& url=  QString());
     QImage read();
     void close();
-    bool isEnd;
+    bool isEnd();
     const qint64& pts();
 
 private:

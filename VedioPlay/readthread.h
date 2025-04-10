@@ -1,10 +1,43 @@
 #ifndef READTHREAD_H
 #define READTHREAD_H
 
-class ReadThread
+#include <QElapsedTimer>
+#include <QThread>
+#include <QTime>
+
+class VideoDecoder;
+
+class ReadThread : public QThread
 {
+    Q_OBJECT
 public:
-    ReadThread();
+    enum PlayState      // 视频播放状态
+    {
+        play,
+        end
+    };
+public:
+    explicit ReadThread(QObject *parent = nullptr);
+    ~ReadThread() override;
+    void open(const QString& url = QString());  // 打开视频
+    void pause(bool flag);                      // 暂停视频
+    void close();                               // 关闭视频
+    const QString& url();                       // 获取打开的视频地址
+
+protected:
+    void run() override;
+
+signals:
+    void updateImage(const QImage& image);      // 将读取到的视频图像发送出去
+    void playState(PlayState state);            // 视频播放状态发送改变时触发
+
+private:
+    VideoDecoder* m_videoDecode = nullptr;       // 视频解码类
+    QString m_url;                              // 打开的视频地址
+    bool m_play   = false;                      // 播放控制
+    bool m_pause  = false;                      // 暂停控制
+    QElapsedTimer m_etime1;                     // 控制视频播放速度（更精确，但不支持视频后退）
+    QTime         m_etime2;                     // 控制视频播放速度（支持视频后退）
 };
 
 #endif // READTHREAD_H

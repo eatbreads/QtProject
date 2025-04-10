@@ -32,6 +32,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         videodecoder.h videodecoder.cpp
         playimage.h playimage.cpp
 
+
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET VedioPlay APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

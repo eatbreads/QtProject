@@ -249,7 +249,18 @@ void VideoDecoder::showError(int err)
 #endif
 }
 
-
+bool VideoDecoder::isEnd()
+{
+    return m_end;
+}
+/**
+ * @brief    返回当前帧图像播放时间
+ * @return
+ */
+const qint64 &VideoDecoder::pts()
+{
+    return m_pts;
+}
 void VideoDecoder::close()
 {
     clear();
