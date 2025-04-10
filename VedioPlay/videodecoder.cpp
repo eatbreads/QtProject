@@ -149,7 +149,94 @@ bool VideoDecoder::open(const QString &url)
     return true;
 }
 
+QImage VideoDecoder::read()
+{
+    if(!m_formatContext)
+    {
+        return QImage();
+    }
+    // 读取下一帧数据
+    int readRet = av_read_frame(m_formatContext, m_packet);
+    if(readRet < 0)
+    {
+        avcodec_send_packet(m_codecContext, m_packet); // 读取完成后向解码器中传如空AVPacket，否则无法读取出最后几帧
+    }
+    else
+    {
+        if(m_packet->stream_index == m_videoIndex)     // 如果是图像数据则进行解码
+        {
+            // 计算当前帧时间（毫秒）
+#if 1       // 方法一：适用于所有场景，但是存在一定误差
+            m_packet->pts = qRound64(m_packet->pts * (1000 * rationalToDouble(&m_formatContext->streams[m_videoIndex]->time_base)));
+            m_packet->dts = qRound64(m_packet->dts * (1000 * rationalToDouble(&m_formatContext->streams[m_videoIndex]->time_base)));
+#else       // 方法二：适用于播放本地视频文件，计算每一帧时间较准，但是由于网络视频流无法获取总帧数，所以无法适用
+            m_obtainFrames++;
+            m_packet->pts = qRound64(m_obtainFrames * (qreal(m_totalTime) / m_totalFrames));
+#endif \
+    // 将读取到的原始数据包传入解码器
+            int ret = avcodec_send_packet(m_codecContext, m_packet);
+            if(ret < 0)
+            {
+                showError(ret);
+            }
+        }
+    }
+    av_packet_unref(m_packet);  // 释放数据包，引用计数-1，为0时释放空间
+    int ret = avcodec_receive_frame(m_codecContext, m_frame);
+    if(ret < 0)
+    {
+        av_frame_unref(m_frame);
+        if(readRet < 0)
+        {
+            m_end = true;     // 当无法读取到AVPacket并且解码器中也没有数据时表示读取完成
+        }
+        return QImage();
+    }
 
+    m_pts = m_frame->pts;
+
+    // 为什么图像转换上下文要放在这里初始化呢，是因为m_frame->format，如果使用硬件解码，解码出来的图像格式和m_codecContext->pix_fmt的图像格式不一样，就会导致无法转换为QImage
+    if(!m_swsContext)
+    {
+        // 获取缓存的图像转换上下文。首先校验参数是否一致，如果校验不通过就释放资源；然后判断上下文是否存在，如果存在直接复用，如不存在进行分配、初始化操作
+        m_swsContext = sws_getCachedContext(m_swsContext,
+                                            m_frame->width,                     // 输入图像的宽度
+                                            m_frame->height,                    // 输入图像的高度
+                                            (AVPixelFormat)m_frame->format,     // 输入图像的像素格式
+                                            m_size.width(),                     // 输出图像的宽度
+                                            m_size.height(),                    // 输出图像的高度
+                                            AV_PIX_FMT_RGBA,                    // 输出图像的像素格式
+                                            SWS_BILINEAR,                       // 选择缩放算法(只有当输入输出图像大小不同时有效),一般选择SWS_FAST_BILINEAR
+                                            nullptr,                            // 输入图像的滤波器信息, 若不需要传NULL
+                                            nullptr,                            // 输出图像的滤波器信息, 若不需要传NULL
+                                            nullptr);                          // 特定缩放算法需要的参数(?)，默认为NULL
+        if(!m_swsContext)
+        {
+#if PRINT_LOG
+            qWarning() << "sws_getCachedContext() Error！";
+#endif
+            free();
+            return QImage();
+        }
+    }
+
+    // AVFrame转QImage
+    uchar* data[]  = {m_buffer};
+    int    lines[4];
+    av_image_fill_linesizes(lines, AV_PIX_FMT_RGBA, m_frame->width);  // 使用像素格式pix_fmt和宽度填充图像的平面线条大小。
+    ret = sws_scale(m_swsContext,             // 缩放上下文
+                    m_frame->data,            // 原图像数组
+                    m_frame->linesize,        // 包含源图像每个平面步幅的数组
+                    0,                        // 开始位置
+                    m_frame->height,          // 行数
+                    data,                     // 目标图像数组
+                    lines);                   // 包含目标图像每个平面的步幅的数组
+    QImage image(m_buffer, m_frame->width, m_frame->height, QImage::Format_RGBA8888);
+    av_frame_unref(m_frame);
+
+    return image;
+
+}
 
 void VideoDecoder::showError(int err)
 {
